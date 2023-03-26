@@ -1,8 +1,12 @@
 # Tree planting decision-making under uncertainty in GB
 Replication code for paper on tree planting uncertainty under the ADVANCES project intended for public access.
 
-Inputs
+Inputs (stored in /data): will need to contact author for a copy of the directory because this is over 10GB
 1. Binary files: full matrices of output from NEV suite Monte Carlo simulations from the distribution of uncertain parameters, for each climate-economy realisation (CER)
+2. a1_landuse_chg.mat: Matlab struct describing hectares of landuse change under a tree planting scenario
+3. high_level_lcs.mat: landuse cover in GB
+4. param_table.csv: a table describing parameter specifications for each of the CERs
+
 
 Outputs
 * Tables showing optimal parcels of tree planting (decision) and NPV outcomes (returns) across climate-economy realisations for reaching a 12MtCO2e carbon sequestration target excluding displaced agricultural emissions, ran under the following settings
