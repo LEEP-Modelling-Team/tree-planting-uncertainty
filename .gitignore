@@ -1,0 +1,16 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+*.Rproj
+*.Rhistory
+*.pper
+*.mat
+.Rproj.user
+*.DS_Store
+*.bin
+*.xlsx
+*.asv
+*.log
+
+.RData
+*.csv
