@@ -57,6 +57,10 @@ writetable(in_scenario_returns_table,[tables_path, 'in_scenario_returns_table.cs
 writetable(ghg_table, [tables_path, 'in_scenario_ghg_table.csv']);
 
 %% Optimise with abatement costs and varying lambda
+
+% Clear in_scenario_decision_table to free up memory
+clear in_scenario_decision_table
+
 for cst=linspace(0,100,41)
     optim_object.abatement_cost = cst;
     optim_object.ghg_target = 12 * 1e6;
