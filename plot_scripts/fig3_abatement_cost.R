@@ -1,9 +1,15 @@
-source('../scripts/helpers.R')
+library(ggplot2)
+library(tidyverse)
+library(patchwork)
+
+rm(list=ls())
+
+source('./plot_scripts/helpers.R')
 
 cst <- seq(0,100,2.5)
 decision_table_cst <- lapply(cst, function(x) {
-  a1 <- read_csv(paste0('../../output/', date_string, '_decision_table/oc_decision_table_mix_lambda_50_abatement_', as.character(x), '_ctarget_12.csv'))
-  a2 <- read_csv(paste0('../../output/', date_string, '_decision_table/oc_decision_table_mix_lambda_100_abatement_', as.character(x), '_ctarget_12.csv'))
+  a1 <- read_csv(paste0('output/tables/oc_decision_table_mix_lambda_50_abatement_', as.character(x), '_ctarget_12.csv'))
+  a2 <- read_csv(paste0('output/tables/oc_decision_table_mix_lambda_100_abatement_', as.character(x), '_ctarget_12.csv'))
   a2$CVaR_50 <- a1$CVaR
   a2
 })
@@ -24,7 +30,7 @@ abatement_hectares_plot <- hectares %>%
   pivot_longer(c('λ=0 (P-EV)', 'λ=0.5', 'λ=1 (P-RA)')) %>%
   ggplot(aes(y = value, x = as.numeric(abatement_cost), color = name)) +
   geom_line(size =1) +
-  scale_x_continuous('Abatement Cost (£/tCO2e/yr)') +
+  scale_x_continuous('Net GGR Cost (£/tCO2e/yr)') +
   scale_y_continuous('Hectares', labels = scales::unit_format(suffix='M', scale = 1e-6)) +
   ggsci::scale_color_jama()+
   ggsci::scale_fill_jama()+
@@ -36,8 +42,8 @@ abatement_hectares_plot
 
 
 returns_table_cst <- lapply(cst, function(x) {
-  a1 <- read_csv(paste0('../../output/', date_string, '_decision_table/oc_returns_table_mix_lambda_50_abatement_', as.character(x), '_ctarget_12.csv'))
-  a2 <- read_csv(paste0('../../output/', date_string, '_decision_table/oc_returns_table_mix_lambda_100_abatement_', as.character(x), '_ctarget_12.csv'))
+  a1 <- read_csv(paste0('output/tables/oc_returns_table_mix_lambda_50_abatement_', as.character(x), '_ctarget_12.csv'))
+  a2 <- read_csv(paste0('output/tables/oc_returns_table_mix_lambda_100_abatement_', as.character(x), '_ctarget_12.csv'))
   a2$CVaR_50 <- a1$CVaR
   a2$CVaR_ghg_50 <- a1$CVaR_ghg
   a2
@@ -122,7 +128,7 @@ abatement_cost_plot <- ghg %>%
   ggsci::scale_color_jama()+
   ggsci::scale_fill_jama()+
   scale_y_continuous('NPV (£)', labels = scales::unit_format(suffix = 'B', scale = 1))+
-  scale_x_continuous('Abatement Cost (£/t/yr)') +
+  scale_x_continuous('Net GGR Cost (£/t/yr)') +
   coord_cartesian(ylim = c(-15, 25), xlim = c(0,75), expand = F) +
   ggpubr::theme_pubr()+
   labs(color = '', fill = '') +
@@ -136,4 +142,4 @@ abatement_plot <- abatement_hectares_plot + abatement_ghg_plot + abatement_cost_
   plot_annotation(tag_levels = 'a') & 
   theme(plot.tag = element_text(size = 12))
 abatement_plot
-ggsave('../output/20220901/abatement_cost_plot.png', abatement_plot, width = 3000, height = 1200, units = 'px')
+ggsave('output/figures/abatement_cost_plot.png', abatement_plot, width = 3000, height = 1200, units = 'px')

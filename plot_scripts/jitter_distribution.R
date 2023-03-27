@@ -18,7 +18,6 @@ colnames(cer_benefits) <- cer_names
 cer_benefits_long <- cer_benefits %>% 
   pivot_longer(cer_names) 
 
-
 distribution_lims <- c(min(c(jitter_df$benefits, cer_benefits_long$value))-0.1, max(jitter_df$benefits, cer_benefits_long$value)+0.1)
 cer_benefits_dist_plot <- cer_benefits_long %>%
   ggplot(aes(x = value, color = name, fill = name)) +
@@ -35,7 +34,6 @@ cer_benefits_dist_plot <- cer_benefits_long %>%
   theme(axis.line.x = element_line(), legend.title = element_blank())
 cer_benefits_dist_plot
 
-cer_returns <- cer_returns[,1]
 cer_at_risk <- cer_returns < quantile(cer_returns, 0.1)
 ra_returns <- returns_table$CVaR %>%
   fcn_normalise_benefits()

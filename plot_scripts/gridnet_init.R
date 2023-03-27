@@ -39,11 +39,16 @@ fcn_plot_planting_mix <- function(df_list, facet_dir = 'row') {
   plot <- ggplot() +
     geom_sf(data = gb_border, color = "gray20", fill = "#f7fcb94D", lwd = 0.2, inherit.aes = FALSE) +
     geom_sf(data = df, aes(fill = species, alpha = log(hectares_planted+1)), lwd = 0, color = NA) +
-    ggsci::scale_fill_npg() +
+    scale_fill_manual(values = c("#7876B1FF", "#20854EFF")) +
     scale_alpha_continuous(guide = "none", range = c(0,1))+
-    facet_grid(cols = vars(column_label)) +
     labs(fill = 'Species')+
     theme_void()
+  
+  if (facet_dir == 'row') {
+    plot <- plot + facet_grid(rows = vars(column_label))
+  } else {
+    plot <- plot + facet_grid(cols = vars(column_label))
+  }
   plot
 }
 

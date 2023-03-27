@@ -15,12 +15,7 @@ setwd(dir = workdir)
 source("plot_scripts/helpers.R")
 
 ## 1. Plot time-series line plots for three focus CERs ------
-
-# Define "focus" climate-economy realisations
-CER <- c(457, 2544, 3083)
-
-cer_names <- c('NH', 'ME', 'HE')
-cer_colors <- ggsci::pal_nejm()(3)
+source("plot_scripts/define_cer.R")
 
 # Extract data for CERs
 param_table <- read_csv("data/param_table.csv") %>%
@@ -50,8 +45,8 @@ climate_var <- param_table %>%
 
 # Join climate and economic variables
 var_names =  c('temp', 'rain', 'carbon_price', 'price_wheat', 'price_dairy', 'price_timber')
-var_labels = c("Temperature", "Rainfall", 'Carbon Price', 
-               'Wheat', 'Dairy', 'Timber')
+var_labels = c("Temperature (°C)", "Rainfall (mm)", 'Carbon Price (£/tCO2e)', 
+               'Wheat (£/t)', 'Dairy (£/ppl)', 'Timber (£/m3)')
 clim_econ_var <- rbind(economic_var, climate_var) %>%
   pivot_longer(cols = as.character(2020:2049), names_to = "year", values_to = "value") %>%
   mutate(year = as.numeric(year)) %>%
@@ -72,7 +67,7 @@ clim_econ_var <- clim_econ_range %>%
   ggplot() +
   geom_ribbon(aes(x = year, ymin = lb, ymax = ub), fill = "gray80") +
   geom_line(data = clim_econ_var_cer, aes(x = year, y = value, color = cer), size = 0.8) +
-  scale_color_manual("", values = cer_colors) +
+  scale_color_manual("CER", values = cer_colors) +
   scale_x_continuous("Year", expand = c(0,0)) +
   scale_y_continuous(expand = c(0.1,0.1)) +
   facet_wrap(~var, scales = "free_y", nrow = 2) +
@@ -127,7 +122,7 @@ bump_plot <- bump_data %>%
   #                    color = NA, fill = 'gray70') +
   geom_rect(data = hist_data_short, aes(ymin = min, ymax = max, xmin = as.numeric(position) - 0.1,
                                              xmax = as.numeric(position) + 0.1), color = 'gray70', fill = 'gray90') +
-  geom_text(aes(label = ifelse(optimal, scenario, ''), x = position + 0, y = -22)) +
+  geom_text(aes(label = ifelse(optimal, scenario, ''), x = position + 0, y = -25)) +
   geom_bump(aes(y = value, x = position, color = fct_rev(name)), smooth = 7, size = 1)+
   geom_point(aes(y = value, x = position, color = fct_rev(name), 
                  size = ifelse(optimal, 1,0)))+
@@ -136,14 +131,13 @@ bump_plot <- bump_data %>%
   #                                             paste0(round(value,1)), NA),
   #              color = name, size = ifelse(optimal,6,1),
   #              fontface = ifelse(optimal, 'bold', 'plain')), direction = 'x', nudge_x = 0.3) +
-  ggsci::scale_color_nejm() +
+  scale_color_manual("Planting \nstrategy", values = p_cer_colors) +
   ggpubr::theme_pubr() +
   scale_size_continuous(range = c(2,5), guide = 'none')+
   scale_y_continuous('NPV (billion £)', expand = c(0.1,0.1))+
   scale_x_continuous(limits = c(0.5, 3.5), expand = c(0,0)) +
   coord_flip() +
-  theme(legend.title = element_blank(),
-        axis.text.y = element_blank(),
+  theme(axis.text.y = element_blank(),
         axis.title.y = element_blank(),
         axis.line.y = element_blank(),
         axis.ticks.y = element_blank())
@@ -153,9 +147,11 @@ source("./plot_scripts/gridnet_init.R")
 
 decision_table_cer <- lapply(CER, function(cer) read_csv(paste0("output/tables/oc_decision_table_rs_", cer, ".csv"))) %>%
   lapply(function(x) x %>% mutate(hectares_planted = hectares * EV))
-names(decision_table_cer) <- cer_names
+p_cer_names <- c("P-NH", "P-ME", "P-HE")
+names(decision_table_cer) <- p_cer_names
 plot_list_decision <- decision_table_cer %>%
   fcn_plot_planting_mix()
+
 
 ## Combine plots
 layout <- "
@@ -168,6 +164,6 @@ CCCC
 CCCC
 CCCC
 "
-bump_plot_var_map <- (clim_econ_var + plot_layout(guides = 'keep')) + plot_list_decision + bump_plot + plot_layout(design = layout, guides = 'collect') & plot_annotation(tag_levels = 'a') & theme(legend.position = 'bottom')
+bump_plot_var_map <- clim_econ_var + plot_list_decision + bump_plot + plot_layout(design = layout) & plot_annotation(tag_levels = 'a') & theme(legend.position = 'right')
 ggsave('output/figures/fig1_bump_chart.png', bump_plot_var_map, width = 2000, height = 3000, 
        units = 'px', scale = 1.2)
