@@ -23,7 +23,7 @@ Will need to contact author for a copy of the directory because this is over 10G
 
 ## Steps in analysis, with portions replicable in this repo in asterisks
 
-Because replication of the entire analysis requires full access to NEV where sensitive data are used as inputs, portions that depend on NEV will not be publicly replicable but private access could be granted.
+Because replication of the entire analysis requires full access to NEV where sensitive data are used as inputs, portions that depend on NEV will not be publicly replicable but private access could be granted upon reasonable request.
 1. Drawing of parameters in climate-economy scenarios from statistical distributions
 2. Running the NEV forestry and agriculture models for each of the climate-economy realisation
 3. Optimising land-use decisions *
