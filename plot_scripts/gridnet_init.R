@@ -47,7 +47,7 @@ fcn_plot_planting_mix <- function(df_list, facet_dir = 'row') {
   if (facet_dir == 'row') {
     plot <- plot + facet_grid(rows = vars(column_label))
   } else {
-    plot <- plot + facet_grid(cols = vars(column_label))
+    plot <- plot + facet_grid(cols = vars(column_label),switch = T)
   }
   plot
 }

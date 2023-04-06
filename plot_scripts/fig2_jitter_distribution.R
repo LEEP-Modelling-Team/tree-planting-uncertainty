@@ -168,17 +168,16 @@ cov_mat_plot <- ev_cvar_cov_mat %>%
         axis.title = element_blank(), axis.text = element_text(size = 8))
 cov_mat_plot
 
-
 layout_design <- "
-AAA##
-BBBEF
-CCCEF
-CCCEF
-DDDEF
+#AAA#
+BCCCF
+BDDDF
+BDDDF
+BEEEF
 "
-jitter_distribution_plot <- cer_benefits_dist_plot + dist_p_ev + jitter_sigmoid + dist_ra + he_ra_maps + cov_mat_plot +
+jitter_distribution_plot <- cer_benefits_dist_plot + he_ra_maps + dist_p_ev + jitter_sigmoid + dist_ra + cov_mat_plot +
   plot_layout(design = layout_design, heights = c(1,1,1,1,1), guides = 'collect') +
   plot_annotation(tag_levels = 'a') & 
   theme(plot.tag = element_text(size = 12), legend.position = 'bottom')
-ggsave('output/figures/jitter_distribution.png', jitter_distribution_plot, width = 2500, height = 2000, units = 'px')
+ggsave('output/figures/fig2_jitter_distribution.png', jitter_distribution_plot, width = 2500, height = 2000, units = 'px')
 dev.off()
