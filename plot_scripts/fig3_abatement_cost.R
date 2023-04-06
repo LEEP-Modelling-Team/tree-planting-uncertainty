@@ -72,13 +72,23 @@ returns_table_cst <- lapply(cst, function(x) {
 names(decision_table_cst) <- cst
 names(returns_table_cst) <- cst
 
+max_lb_ub <- TRUE
 lb <- function(x) {
-  a <- quantile(x, 0.05)
+  if (max_lb_ub) {
+    a <- max(x)
+  } else {
+    a <- quantile(x, 0.05)
+  }
+  
   names(a) <- NA
   a
 }
 ub <- function(x) {
-  a <- quantile(x, 0.95)
+  if (max_lb_ub) {
+    a <- min(x)
+  } else {
+    a <- quantile(x, 0.95)
+  }
   names(a) <- NA
   a
 }
@@ -108,7 +118,7 @@ abatement_hectares_plot <- hectares %>%
   cdr_intervals() +
   geom_line(size =1) +
   scale_x_continuous('Riskless CDR\nCost (£/tCO2e/yr)') +
-  scale_y_continuous('Hectares', labels = scales::unit_format(suffix='M', scale = 1e-6)) +
+  scale_y_continuous('Tree planting (ha)', labels = scales::unit_format(suffix='M', scale = 1e-6)) +
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
   ggpubr::theme_pubr() +
@@ -166,7 +176,7 @@ abatement_ghg_plot <- ghg %>%
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
   #scale_y_continuous('MtCO2e/yr', labels = scales::unit_format(suffix = '', scale = 1e-6))+
-  scale_y_continuous('Tree planting CDR (% of target)', labels = scales::percent_format())+
+  scale_y_continuous('Contribution to CDR target', labels = scales::percent_format())+
   scale_x_continuous('Riskless CDR \nCost (£/tCO2e/yr)') +
   
   ggpubr::theme_pubr()+
@@ -194,7 +204,7 @@ abatement_cost_plot <- ghg %>%
   ggsci::scale_fill_nejm()+
   scale_y_continuous('Total Cost (£)', labels = scales::unit_format(suffix = 'B', scale = 1))+
   scale_x_continuous('Riskless CDR\ncost (£/tCO2e/yr)') +
-  coord_cartesian(expand = F, ylim = c(0, 25)) +
+  coord_cartesian(expand = F, ylim = c(0,32)) +
   ggpubr::theme_pubr()+
   labs(color = '', fill = '') +
   theme(legend.position = 'bottom')+
@@ -219,3 +229,4 @@ abatement_plot_horizontal <- cdr_plot + cdr_plot + cdr_plot + abatement_hectares
 abatement_plot_horizontal
 ggsave('output/figures/fig3_abatement_cost_plot.png', abatement_plot_vertical, width = 1200, height = 3000, units = 'px')
 ggsave('output/figures/fig3_abatement_cost_plot_horizontal.png', abatement_plot_horizontal, width = 2500, height = 1300, units = 'px', scale = 1.2)
+
