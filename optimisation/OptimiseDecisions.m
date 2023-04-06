@@ -83,3 +83,35 @@ for cst=linspace(0,100,41)
     optim_object = rmfield(optim_object, 'abatement_cost');
     optim_object = rmfield(optim_object, 'ghg_target');
 end
+
+%% Optimise with abatement costs with opportunity costs only
+
+% Clear in_scenario_decision_table to free up memory
+clear in_scenario_decision_table
+
+parameters_oc = parameters;
+parameters_oc.cost_type = 'opp_cost';
+optim_object_oc = fcn_load_mc_output(parameters_oc);
+
+for cst=linspace(0,300,31)
+    optim_object_oc.abatement_cost = cst;
+    optim_object_oc.ghg_target = 12 * 1e6;
+    optim_object_oc.ghg_target_strict = 0;
+    for lambda=[0.5,1]
+        optim_object_oc.p = mod((1:parameters.S)',1)==0;
+        optim_object_oc.p = optim_object_oc.p / sum(optim_object_oc.p);
+        optim_object_oc.planting_target = 0;
+        optim_object_oc.lambda = lambda;
+        optim_object_oc.run_cvar = lambda > 0;
+        [decision_table, returns_table] = fcn_optimise_scheme_table_mix(optim_object_oc);
+        if ismember('p', param_table.Properties.VariableNames)
+            param_table = removevars(param_table, 'p');
+        end
+        suffix = ['lambda_', num2str(lambda*100), '_abatement_', ...
+            num2str(optim_object_oc.abatement_cost), '_ctarget_', num2str(optim_object_oc.ghg_target/1e6)];
+        writetable(decision_table, [tables_path, 'oc_decision_table_opp_cost_',suffix,'.csv']);
+        writetable([returns_table, param_table],  [ tables_path, 'oc_returns_table_opp_cost_',suffix,'.csv']);
+    end
+    optim_object_oc = rmfield(optim_object_oc, 'abatement_cost');
+    optim_object_oc = rmfield(optim_object_oc, 'ghg_target');
+end
