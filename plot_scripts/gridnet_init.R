@@ -45,9 +45,9 @@ fcn_plot_planting_mix <- function(df_list, facet_dir = 'row') {
     theme_void()
   
   if (facet_dir == 'row') {
-    plot <- plot + facet_grid(rows = vars(column_label))
+    plot <- plot + facet_grid(rows = vars(column_label), switch = 'y')
   } else {
-    plot <- plot + facet_grid(cols = vars(column_label),switch = T)
+    plot <- plot + facet_grid(cols = vars(column_label)) + theme(strip.text.y.left = element_text(angle = 0))
   }
   plot
 }
