@@ -96,7 +96,7 @@ jitter_sigmoid <- jitter_df %>%
   ggnewscale::new_scale_color()+
   geom_vline(aes(xintercept = quantile(ev_returns, 0.1)), color = 'gray70', size = .5) +
   geom_jitter(aes(color = at_risk), height = 0.25, size = .5)+
-  scale_color_manual(values = c('gray50','#f22a18'), guide = 'none') +
+  scale_color_manual(values = c('gray50','#DC3220'), guide = 'none') +
   ggnewscale::new_scale_color()+
   #geom_label(data = rs_returns_point_long, aes(y = model, label = CER, color = CER), nudge_y = -0.1) +
   geom_point(data = rs_returns_point_long, color = 'white', size = 4) +
@@ -214,7 +214,7 @@ cov_mat_plot <- ev_cvar_cov_mat %>%
   geom_tile(aes(fill = value), color = 'black') +
   geom_text(aes(label = round(value/1e18,1),color = value > 1.41e19)) +
   facet_wrap(~strategy, nrow = 2) +
-  scale_fill_viridis_b(option = 'magma', bquote('x'~10^19), labels = scales::unit_format(suffix = '', scale = 1e-19), trans = 'log10', direction = -1) +
+  scale_fill_viridis_b(option = 'magma', trans = 'log10', direction = -1) +
   scale_color_manual(guide = 'none', values = c("black", "white")) +
   scale_y_discrete(limits = c('C', 'B')) +
   scale_x_discrete(limits = c('B', 'C')) +

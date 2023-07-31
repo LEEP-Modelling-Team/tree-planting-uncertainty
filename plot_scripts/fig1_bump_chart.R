@@ -38,7 +38,7 @@ climate_data <- read_csv("data/climate_delta_ts.csv") %>%
   separate(var, c('Climate','cells','ukcp18','clim_scen_string','var','climate_model_member')) %>%
   select(-c('Climate','cells','ukcp18'))
 climate_var <- param_table %>%
-  right_join(climate_data, by = c("clim_scen_string", "climate_model_member")) %>%
+  right_join(climate_data, by = c("clim_scen_string", "climate_model_member"), relationship = "many-to-many") %>%
   select(colnames(economic_var))
 
 # Join climate and economic variables
@@ -148,7 +148,7 @@ decision_table_cer <- lapply(CER, function(cer) read_csv(paste0("output/tables/o
 p_cer_names <- c("P-NH", "P-ME", "P-HE")
 names(decision_table_cer) <- p_cer_names
 plot_list_decision <- decision_table_cer %>%
-  fcn_plot_planting_mix()
+  fcn_plot_planting_mix(facet_dir = 'row')
 
 
 ## Combine plots

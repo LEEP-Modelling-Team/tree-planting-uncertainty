@@ -28,6 +28,7 @@ if (!exists('gridnet')) {
 ## Functions ----------
 
 fcn_plot_planting_mix <- function(df_list, facet_dir = 'row') {
+
   df_optim <- df_list %>%
     bind_rows(.id = "column_label") %>%
     mutate(column_label = factor(column_label, levels = names(df_list)))
@@ -38,17 +39,18 @@ fcn_plot_planting_mix <- function(df_list, facet_dir = 'row') {
   
   plot <- ggplot() +
     geom_sf(data = gb_border, color = "gray20", fill = "#f7fcb94D", lwd = 0.2, inherit.aes = FALSE) +
-    geom_sf(data = df, aes(fill = species, alpha = log(hectares_planted+1)), lwd = 0, color = NA) +
-    scale_fill_manual(values = c("#7876B1FF", "#20854EFF")) +
-    scale_alpha_continuous(guide = "none", range = c(0,1))+
+    geom_sf(data = df, aes(fill = species, alpha = hectares_planted+1), lwd = 0, color = NA) +
+    scale_fill_manual(values = c("#D55E00", "#009E73")) +
+    scale_alpha_continuous(guide = "none", range = c(0,1), trans = "log")+
     labs(fill = 'Species')+
     theme_void()
   
-  if (facet_dir == 'row') {
+  if (identical(facet_dir, 'row')) {
     plot <- plot + facet_grid(rows = vars(column_label), switch = 'y')
+    return(plot)
   } else {
     plot <- plot + facet_grid(cols = vars(column_label)) + theme(strip.text.y.left = element_text(angle = 0))
+    return(plot)
   }
-  plot
 }
 
