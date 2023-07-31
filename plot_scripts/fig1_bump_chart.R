@@ -167,3 +167,14 @@ CCCC
 bump_plot_var_map <- clim_econ_var + plot_list_decision + bump_plot + plot_layout(design = layout) & plot_annotation(tag_levels = 'a') & theme(legend.position = 'right')
 ggsave('output/figures/fig1_bump_chart.png', bump_plot_var_map, width = 2000, height = 3000, 
        units = 'px', scale = 1.2)
+
+## Extract carbon sequestration numbers ------
+in_scenario_ghg_table <- read_csv(paste0('output/tables/in_scenario_ghg_table.csv'))
+ghg_cer <- returns_table_cer %>%
+  lapply(function(tb) tb %>% filter(as.numeric(substr(run_index, 1, 5)) %in% CER)) %>%
+  lapply(function(tb) tb$EV_ghg) %>%
+  bind_rows()
+ghg_cer <- as.data.frame(ghg_cer)
+rownames(ghg_cer) <- c('NH', 'ME', 'HE')
+colnames(ghg_cer) <- c('P-NH', 'P-ME', 'P-HE')
+ghg_cer

@@ -111,9 +111,10 @@ remove_x_axis <- function() {
         axis.text.x = element_blank())
 }
 
-abatement_hectares_plot <- hectares %>%
+hectares_table <- hectares %>%
   pivot_longer(ra_labels) %>%
-  filter(name != ra_labels[2]) %>%
+  filter(name != ra_labels[2])
+abatement_hectares_plot <- hectares_table %>%
   ggplot(aes(y = value, x = as.numeric(abatement_cost), color = name)) +
   cdr_intervals() +
   geom_line(size =1) +
@@ -158,7 +159,7 @@ colnames(ghg) <- c('abatement_cost', 'cost_ev_mean', 'cost_cvar50_mean', 'cost_c
                    'ghg_ev_lb', 'ghg_cvar50_lb', 'ghg_cvar100_lb',
                    'ghg_ev_ub', 'ghg_cvar50_ub', 'ghg_cvar100_ub')
 
-abatement_ghg_plot <- ghg %>%
+ghg_table <- ghg %>%
   pivot_longer(-abatement_cost) %>%
   separate(name, c('var', 'strategy', 'dist')) %>%
   filter(var == 'ghg') %>%
@@ -167,7 +168,9 @@ abatement_ghg_plot <- ghg %>%
   pivot_wider(names_from = dist, values_from = value) %>%
   mutate(abatement_cost = as.numeric(abatement_cost)) %>%
   mutate(strategy = factor(strategy, c('ev', 'cvar50', 'cvar100'), ra_labels)) %>%
-  mutate(mean = mean / (12*1e6), lb = lb / (12*1e6), ub = ub / (12*1e6)) %>%
+  mutate(mean = mean / (12*1e6), lb = lb / (12*1e6), ub = ub / (12*1e6))
+
+abatement_ghg_plot <- ghg_table %>%
   ggplot(aes(x = abatement_cost, y = mean, fill = strategy, color = strategy)) +
   geom_hline(yintercept = 1, color = 'gray30') +
   cdr_intervals() +
@@ -187,7 +190,7 @@ abatement_ghg_plot <- ghg %>%
   guides(fill = 'none')
 abatement_ghg_plot
 
-abatement_cost_plot <- ghg %>%
+cost_table <- ghg %>%
   pivot_longer(-abatement_cost) %>%
   separate(name, c('var', 'strategy', 'dist')) %>%
   filter(var == 'cost') %>%
@@ -195,7 +198,8 @@ abatement_cost_plot <- ghg %>%
   #filter(!(var == 'cost' & dist %in% c('lb', 'ub'))) %>%
   pivot_wider(names_from = dist, values_from = value) %>%
   mutate(abatement_cost = as.numeric(abatement_cost)) %>%
-  mutate(strategy = factor(strategy, c('ev', 'cvar50', 'cvar100'), ra_labels)) %>%
+  mutate(strategy = factor(strategy, c('ev', 'cvar50', 'cvar100'), ra_labels))
+abatement_cost_plot <- cost_table %>%
   ggplot(aes(x = abatement_cost, y = -mean, fill = strategy, color = strategy)) +
   cdr_intervals() +
   geom_ribbon(aes(ymin = -lb, ymax = -ub), color = NA, alpha = 0.3) +
