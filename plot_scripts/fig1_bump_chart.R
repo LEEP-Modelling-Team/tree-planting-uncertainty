@@ -10,8 +10,6 @@ library(ggpubr)
 library(ggsci)
 
 # Set working directory
-workdir = r"{C:\Users\uqfcho\OneDrive - University of Exeter\Github\tree-planting-uncertainty}"
-setwd(dir = workdir)
 source("plot_scripts/helpers.R")
 
 ## 1. Plot time-series line plots for three focus CERs ------
@@ -29,9 +27,9 @@ colnames(carbon_price_assumption) <- colnames(price_wheat_assumption) <- colname
 
 # List economic variables
 economic_var <- list(carbon_price = carbon_price_assumption,
-                   price_wheat = price_wheat_assumption,
-                   price_dairy = price_dairy_assumption,
-                   price_timber = price_timber_assumption*22) %>%
+                     price_wheat = price_wheat_assumption,
+                     price_dairy = price_dairy_assumption,
+                     price_timber = price_timber_assumption*22) %>%
   lapply(function(x) cbind(param_table,x)) %>%
   bind_rows(.id = "var")
 
@@ -121,7 +119,7 @@ bump_plot <- bump_data %>%
   #                    stat = 'binline', draw_baseline = FALSE, scale = 0.95, bins = 100,
   #                    color = NA, fill = 'gray70') +
   geom_rect(data = hist_data_short, aes(ymin = min, ymax = max, xmin = as.numeric(position) - 0.1,
-                                             xmax = as.numeric(position) + 0.1), color = 'gray70', fill = 'gray90') +
+                                        xmax = as.numeric(position) + 0.1), color = 'gray70', fill = 'gray90') +
   geom_text(aes(label = ifelse(optimal, scenario, ''), x = position + 0, y = -25)) +
   geom_bump(aes(y = value, x = position, color = fct_rev(name)), smooth = 7, size = 1)+
   geom_point(aes(y = value, x = position, color = fct_rev(name), 

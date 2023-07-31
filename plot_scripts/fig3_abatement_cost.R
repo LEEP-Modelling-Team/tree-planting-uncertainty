@@ -44,11 +44,12 @@ cdr_intervals <- function() {
 cdr_plot <- cdr_gbp %>%
   mutate(name = factor(name, c('beccs', 'daccs', 'ar', 'ew', 'bc', 'scs'),
                        c('BECCS', 'DACCS', 'AR', 'EW', 'BC', 'SCS'))) %>%
+  filter(name %in% c('BECCS', 'DACCS')) %>%
   ggplot(aes(y = as.numeric(name))) +
   cdr_intervals() +
   geom_rect(aes(xmin = lb, xmax = ub, ymin = as.numeric(name)-0.45, ymax = as.numeric(name)+0.45), linewidth=0.5, fill = 'gray50', color = 'gray80') +
   geom_text(aes(x = (lb+ub)/2, label = name), color = 'white')+
-  coord_cartesian(xlim = range(cst), ylim = rev(c(.5,6.5)), expand = F) +
+  coord_cartesian(xlim = range(cst), ylim = rev(c(.5,2.5)), expand = F) +
   theme_void()
 cdr_plot
 
@@ -137,8 +138,8 @@ ghg <- 1:length(cst) %>%
     x$CVaR <- x$CVaR + max(c(0, c*(12e6 - mean(x$CVaR_ghg))))
     
     cost_vec <- c(mean(x$EV), mean(x$CVaR_50), mean(x$CVaR), 
-    lb(x$EV), lb(x$CVaR_50), lb(x$CVaR),
-    ub(x$EV), ub(x$CVaR_50), ub(x$CVaR)) %>%
+                  lb(x$EV), lb(x$CVaR_50), lb(x$CVaR),
+                  ub(x$EV), ub(x$CVaR_50), ub(x$CVaR)) %>%
       fcn_normalise_benefits()
     
     c(cost_vec,
@@ -179,7 +180,7 @@ abatement_ghg_plot <- ghg_table %>%
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
   #scale_y_continuous('MtCO2e/yr', labels = scales::unit_format(suffix = '', scale = 1e-6))+
-  scale_y_continuous('Contribution to CDR target', labels = scales::percent_format())+
+  scale_y_continuous('Contribution to \nCDR target', labels = scales::percent_format())+
   scale_x_continuous('Riskless CDR \nCost (£/tCO2e/yr)') +
   
   ggpubr::theme_pubr()+
@@ -207,7 +208,7 @@ abatement_cost_plot <- cost_table %>%
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
   scale_y_continuous('Total Cost (£)', labels = scales::unit_format(suffix = 'B', scale = 1))+
-  scale_x_continuous('Riskless CDR\ncost (£/tCO2e/yr)') +
+  scale_x_continuous('Alternative CDR\ncost (£/tCO2e/yr)') +
   coord_cartesian(expand = F, ylim = c(0,32)) +
   ggpubr::theme_pubr()+
   labs(color = '', fill = '') +
@@ -226,11 +227,11 @@ layout <- "
 AABBCC
 DDEEFF"
 abatement_plot_horizontal <- cdr_plot + cdr_plot + cdr_plot + abatement_hectares_plot + abatement_ghg_plot + abatement_cost_plot +
-  plot_layout(guides = 'collect', design = layout, heights = c(1,3))&
+  plot_layout(guides = 'collect', design = layout, heights = c(.5,3))&
   theme(legend.position = 'bottom') &
   plot_annotation(tag_levels = 'a') & 
   theme(plot.tag = element_text(size = 12))
 abatement_plot_horizontal
-ggsave('output/figures/fig3_abatement_cost_plot.png', abatement_plot_vertical, width = 1200, height = 3000, units = 'px')
+ggsave('output/figures/fig3_abatement_cost_plot.png', abatement_plot_vertical, width = 1200, height = 2000, units = 'px')
 ggsave('output/figures/fig3_abatement_cost_plot_horizontal.png', abatement_plot_horizontal, width = 2500, height = 1300, units = 'px', scale = 1.2)
 
