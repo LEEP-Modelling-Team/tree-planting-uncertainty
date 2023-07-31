@@ -56,6 +56,34 @@ writetable(in_scenario_decision_table, [tables_path, 'in_scenario_decision_table
 writetable(in_scenario_returns_table,[tables_path, 'in_scenario_returns_table.csv']);
 writetable(ghg_table, [tables_path, 'in_scenario_ghg_table.csv']);
 
+%% Get the covariance matrix of total costs for planting different species
+optim_object.p = mod((1:parameters.S)',1)==0;
+optim_object.p = optim_object.p / sum(optim_object.p);
+optim_object.ghg_target_strict = 12 * 1e6;
+optim_object.planting_target = 0;
+optim_object.run_cvar = true;
+optim_object.lambda = 1;
+if (isfield(optim_object, 'abatement_cost'))
+optim_object = rmfield(optim_object, 'abatement_cost');
+end
+[decision_table, returns_table] = fcn_optimise_scheme_table_mix(optim_object);
+suffix = '';
+writetable(decision_table, [tables_path , 'oc_decision_table_mix',suffix,'.csv']);
+writetable([returns_table, param_table],  [tables_path, 'oc_returns_table_mix',suffix,'.csv']);
+
+ev = decision_table.EV;
+cvar = decision_table.CVaR;
+species = [repelem("SS", size(cost,2)/2, 1); repelem("POK", size(cost,2)/2, 1)];
+
+cst = [optim_object.cost_carbon_forestry_SS(optim_object.subset_cells,:); ...
+    optim_object.cost_carbon_forestry_POK(optim_object.subset_cells,:)];
+[ev_cov_mat , ev_cost_sums] = fcn_cov_mat(ev, cst);
+[cvar_cov_mat , cvar_cost_sums] = fcn_cov_mat(cvar, cst);
+writematrix(ev_cov_mat, [tables_path, 'ev_cov_mat.csv']);
+writematrix(cvar_cov_mat, [tables_path, 'cvar_cov_mat.csv']);
+writematrix(ev_cost_sums, [tables_path, 'ev_cost_sums.csv']);
+writematrix(cvar_cost_sums, [tables_path, 'cvar_cost_sums.csv']);
+
 %% Optimise with abatement costs and varying lambda
 
 % Clear in_scenario_decision_table to free up memory
