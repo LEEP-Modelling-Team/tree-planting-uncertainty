@@ -148,7 +148,7 @@ decision_table_cer <- lapply(CER, function(cer) read_csv(paste0("output/tables/o
 p_cer_names <- c("P-NH", "P-ME", "P-HE")
 names(decision_table_cer) <- p_cer_names
 plot_list_decision <- decision_table_cer %>%
-  fcn_plot_planting_mix(facet_dir = 'row')
+  fcn_plot_planting_mix(facet_dir = 'col')
 
 
 ## Combine plots
