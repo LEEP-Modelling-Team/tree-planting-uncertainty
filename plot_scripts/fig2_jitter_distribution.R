@@ -152,7 +152,7 @@ fcn_plot_shaded_density <- function(dist, risk_thres = quantile(ev_returns, 0.1)
   vline_df <- data.frame(vlines = c(vlines, mean(dist)), cols = c(cols, 'white'))
   vline_df$dens = lapply(vline_df$vlines, function(x) dens$y[which.min(abs(dens$x-x))])
   ggplot(data, aes(x, y)) + 
-    geom_errorbarh(aes(xmin = min(dist), xmax = max(dist), y = max(dens$y)/3), height = 5e-3, 
+    geom_errorbarh(aes(xmin = min(dist), xmax = max(dist), y = max(dens$y)/3), height = 8e-3, 
                    color = 'gray50', linewidth = 1) +
     geom_area(fill = 'gray50') +
     geom_area(data = filter(data, at_risk), fill = '#f22a18') + 
@@ -178,8 +178,9 @@ dist_ra <- jitter_df %>%
         axis.title.y = element_blank(), axis.line.y = element_blank())
 dist_ra
 
-dist_p_ev <- fcn_plot_shaded_density(filter(jitter_df, model == 'P-EV')$benefits, vlines = rev(cer_summary$mean), cols = p_cer_colors, title = "P-EV")
-dist_p_ra <- fcn_plot_shaded_density(filter(jitter_df, model == 'P-RA')$benefits, vlines = rev(cer_summary$mean), cols = p_cer_colors, title = "P-RA") + scale_x_continuous('NPV (£)', labels = scales::unit_format(suffix = 'B', scale = 1)) + 
+dist_p_ev <- fcn_plot_shaded_density(filter(jitter_df, model == 'P-EV')$benefits, vlines = c(), cols = p_cer_colors, title = "P-EV")
+dist_p_ra <- fcn_plot_shaded_density(filter(jitter_df, model == 'P-RA')$benefits, vlines = c(), cols = p_cer_colors, title = "P-RA") + 
+  scale_x_continuous('NPV (£)', labels = scales::unit_format(suffix = 'B', scale = 1)) + 
   ggpubr::theme_pubr() +
   theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),
         axis.title.y = element_blank(), axis.line.y = element_blank())
@@ -194,6 +195,14 @@ he_ra_maps <- selected_solutions %>%
   common_guides("Species") +
   theme(strip.text.y.left = element_text(angle = 0))
 
+selected_maps <- selected_solutions %>%
+  lapply(fcn_plot_planting)
+selected_maps_labelled <- seq_along(selected_maps) %>%
+  lapply(function(i){
+    selected_maps[[i]] +
+      annotate("text",  x=Inf, y = Inf, label = names(selected_maps)[i], vjust=0.99, hjust=0.99)
+  })
+names(selected_maps_labelled) <- names(selected_maps)
 
 ## 4. Covariance matrix -----
 ev_cov_mat <- read_csv(paste0('data/ev_cov_mat.csv'), col_names = F)
@@ -226,19 +235,68 @@ cov_mat_plot <- ev_cvar_cov_mat %>%
         axis.title = element_blank())
 cov_mat_plot
 
+ev_cov_sums <- read_csv(paste0('output/tables/ev_cost_sums.csv'), col_names = F)
+cvar_cov_sums <- read_csv(paste0('output/tables/cvar_cost_sums.csv'), col_names = F)
+
+colnames(ev_cov_sums) <- c("C", "B")
+colnames(cvar_cov_sums) <- c("C", "B")
+
+fcn_npv_scatter <- function(df) {
+  cov_mat <- cov(df / 1e9) %>% as.data.frame()
+  colnames(cov_mat) <- c("Conifers", "Broadleaf")
+  cov_mat$species <- c("Conifers", "Broadleaf")
+  
+  cov_mat_plot <- cov_mat %>%
+    pivot_longer(c('Conifers', 'Broadleaf')) %>%
+    mutate(species = factor(species, c('Conifers', 'Broadleaf'), c('C','B')),
+           name = factor(name, c('Conifers', 'Broadleaf'), c('C','B'))) %>%
+    ggplot(aes(x = species, y = name)) +
+    geom_tile(aes(fill = value, alpha = value), color = 'black', fill = 'gray50') +
+    geom_text(aes(label = round(value,1), color = value > 25)) +
+    scale_color_manual(guide = 'none', values = c("black", "white")) +
+    scale_alpha_continuous(limits = c(0,50)) +
+    scale_y_discrete(limits = c('C', 'B')) +
+    scale_x_discrete(limits = c('B', 'C')) +
+    ggpubr::theme_pubr() +
+    guides(fill = 'none', colour = 'none', alpha = 'none') +
+    coord_fixed() +
+    theme(axis.line = element_blank(),
+          axis.ticks = element_blank(),
+          strip.background = element_blank(),
+          axis.title = element_blank())
+  
+  scatter <- df %>%
+    ggplot(aes(x = C, y = B)) +
+    geom_vline(xintercept = 0, color = 'gray80') +
+    geom_hline(yintercept = 0, color = 'gray80') +
+    geom_point(alpha = 0.3, color = 'gray50', shape = 20) +
+    geom_smooth(method = 'lm', se= F, color = "#D55E00") +
+    theme_pubr() +
+    coord_fixed(ylim = c(-2e10, 3e10), xlim = c(-2e10, 3e10)) +
+    scale_x_continuous("NPV: all conifers (£)", labels = scales::unit_format(suffix = 'B', scale = 1e-9), n.breaks = 3) +
+    scale_y_continuous("NPV: all broadleaves (£)", labels = scales::unit_format(suffix = 'B', scale = 1e-9), n.breaks = 3)
+  
+  scatter | cov_mat_plot
+}
+
+npv_scatter_cvar <- fcn_npv_scatter(cvar_cov_sums)
+npv_scatter_ev <- fcn_npv_scatter(ev_cov_sums)
+
 layout_design <- "
 A##
-BEF
-CEF
-CEF
-DEF
-DGF
-"
-jitter_distribution_plot <- cer_benefits_dist_boxwhisk_plot + dist_p_ev + jitter_sigmoid + dist_p_ra + he_ra_maps + cov_mat_plot + guide_area() +
-  plot_layout(design = layout_design, heights = c(1,1,1,1,1,0.1), widths = c(3,1.1,1), guides = 'collect') +
+BEG
+CEG
+CFH
+DFH
+#I#"
+
+jitter_distribution_plot <- cer_benefits_dist_boxwhisk_plot + dist_p_ev + 
+  jitter_sigmoid + dist_p_ra + selected_maps_labelled$`P-EV` + selected_maps_labelled$`P-RA` + 
+  npv_scatter_ev + npv_scatter_cvar + guide_area() +
+  plot_layout(design = layout_design, heights = c(1,1,1,1,1,0.1), widths = c(2.5,1.1,1.8), guides = 'collect') +
   plot_annotation(tag_levels = 'a') & 
-  theme(legend.position = 'bottom')
-ggsave('output/figures/fig2_jitter_distribution.png', jitter_distribution_plot, width = 2500, height = 2000, units = 'px')
+  theme(legend.position = 'bottom', plot.tag = element_text(face = 'bold'))
+ggsave('output/figures/fig2_jitter_distribution.png', jitter_distribution_plot, width = 3500, height = 2000, units = 'px')
 dev.off()
 
 ## Calculate per hectare benefits and costs for back-of-the-envelope calculations ------

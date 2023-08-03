@@ -38,42 +38,55 @@ climate_data <- read_csv("data/climate_delta_ts.csv") %>%
   separate(var, c('Climate','cells','ukcp18','clim_scen_string','var','climate_model_member')) %>%
   select(-c('Climate','cells','ukcp18'))
 climate_var <- param_table %>%
-  right_join(climate_data, by = c("clim_scen_string", "climate_model_member"), relationship = "many-to-many") %>%
-  select(colnames(economic_var))
+  right_join(climate_data, by = c("clim_scen_string", "climate_model_member"), relationship = "many-to-many") 
+climate_var_long <- pivot_longer(climate_var, as.character(2020:2080), names_to = 'year', values_to = 'value') %>%
+  mutate(year = as.numeric(year))
+
 
 # Join climate and economic variables
 var_names =  c('temp', 'rain', 'carbon_price', 'price_wheat', 'price_dairy', 'price_timber')
 var_labels = c("Temperature (°C)", "Rainfall (mm)", 'Carbon Price (£/tCO2e)', 
                'Wheat (£/t)', 'Dairy (£/ppl)', 'Timber (£/m3)')
-clim_econ_var <- rbind(economic_var, climate_var) %>%
+climate_var_subset <- climate_var %>%
+  select(-as.character(2050:2080))
+econ_df <- economic_var %>%
   pivot_longer(cols = as.character(2020:2049), names_to = "year", values_to = "value") %>%
   mutate(year = as.numeric(year)) %>%
   mutate(var = factor(var, var_names, var_labels))
 
-# Extract climate-economy variables for focus CERs
-clim_econ_var_cer <- clim_econ_var %>%
-  filter(run_index %in% CER) %>%
-  mutate(cer = cer_names[match(run_index, CER)])
+## Alternative version -- climate variables to 2080
+fcn_plot_var <- function(df) {
+  clim_econ_var_cer <- df %>%
+    filter(run_index %in% CER) %>%
+    mutate(cer = cer_names[match(run_index, CER)])
+  clim_econ_range <- df %>%
+    group_by(var, year) %>%
+    summarise(min = min(value), max = max(value), lb = quantile(value, 0.05), ub = quantile(value, 0.95))
+  clim_econ_var <- clim_econ_range %>%
+    ggplot() +
+    geom_ribbon(aes(x = year, ymin = lb, ymax = ub), fill = "gray80") +
+    geom_line(data = clim_econ_var_cer, aes(x = year, y = value, color = cer)) +
+    scale_color_manual("CER", values = cer_colors) +
+    scale_x_continuous("Year", expand = c(0,0), n.breaks = 3) +
+    scale_y_continuous(expand = c(0.1,0.1)) +
+    theme_pubr() +
+    theme(strip.background = element_blank(),
+          legend.position = 'right')
+  clim_econ_var
+}
 
-# Calculate min and max of the distribution for each variable
-# min, max and 95% intervals
-clim_econ_range <- clim_econ_var %>%
-  group_by(var, year) %>%
-  summarise(min = min(value), max = max(value), lb = quantile(value, 0.05), ub = quantile(value, 0.95))
-
-clim_econ_var <- clim_econ_range %>%
-  ggplot() +
-  geom_ribbon(aes(x = year, ymin = lb, ymax = ub), fill = "gray80") +
-  geom_line(data = clim_econ_var_cer, aes(x = year, y = value, color = cer), size = 0.8) +
-  scale_color_manual("CER", values = cer_colors) +
-  scale_x_continuous("Year", expand = c(0,0)) +
-  scale_y_continuous(expand = c(0.1,0.1)) +
-  facet_wrap(~var, scales = "free_y", nrow = 2) +
-  theme_pubr() +
-  theme(axis.title.y = element_blank(),
-        strip.background = element_blank(),
-        legend.position = 'right')
-clim_econ_var
+temp_plot <- fcn_plot_var(filter(climate_var_long, var == 'temp')) +
+  scale_y_continuous('Temperature (°C)')
+rain_plot <- fcn_plot_var(filter(climate_var_long, var == 'rain')) +
+  scale_y_continuous('Rainfall (mm)')
+carbon_price_plot <- fcn_plot_var(filter(econ_df, var == 'Carbon Price (£/tCO2e)')) +
+  scale_y_continuous('Carbon Price (£/tCO2e)')
+wheat_plot <- fcn_plot_var(filter(econ_df, var == 'Wheat (£/t)')) +
+  scale_y_continuous('Wheat (£/t)')
+dairy_plot <- fcn_plot_var(filter(econ_df, var == 'Dairy (£/ppl)')) +
+  scale_y_continuous('Dairy (£/ppl)')
+timber_plot <- fcn_plot_var(filter(econ_df, var == 'Timber (£/m3)')) +
+  scale_y_continuous('Timber (£/m3)')
 
 ## 2. Plot bump charts ---------
 returns_table <- read_csv(paste0('output/tables/oc_returns_table_mix.csv'))
@@ -149,7 +162,16 @@ p_cer_names <- c("P-NH", "P-ME", "P-HE")
 names(decision_table_cer) <- p_cer_names
 plot_list_decision <- decision_table_cer %>%
   fcn_plot_planting_mix(facet_dir = 'col')
-
+plot_list_maps <- decision_table_cer %>%
+  lapply(fcn_plot_planting) %>%
+  rev()
+plot_list_maps_labelled <- seq_along(plot_list_maps) %>%
+  lapply(function(i){
+    plot_list_maps[[i]] + ggtitle(names(plot_list_maps)[i]) +
+    theme(plot.title = element_text(color = p_cer_colors[i], face = 'bold', hjust = 0.5),
+          panel.background = element_rect(colour = p_cer_colors[i], linewidth=1, fill=NA))
+  })
+names(plot_list_maps_labelled) <- names(plot_list_maps)
 
 ## Combine plots
 layout <- "
@@ -162,9 +184,27 @@ CCCC
 CCCC
 CCCC
 "
-bump_plot_var_map <- clim_econ_var + plot_list_decision + bump_plot + plot_layout(design = layout) & plot_annotation(tag_levels = 'a') & theme(legend.position = 'right')
-ggsave('output/figures/fig1_bump_chart.png', bump_plot_var_map, width = 2000, height = 3000, 
-       units = 'px', scale = 1.2)
+#bump_plot_var_map <- clim_econ_var + plot_list_decision + bump_plot + plot_layout(design = layout) & plot_annotation(tag_levels = 'a') & theme(legend.position = 'right')
+#ggsave('output/figures/fig1_bump_chart.png', bump_plot_var_map, width = 2000, height = 3000, 
+#       units = 'px', scale = 1.2)
+
+clim_econ_var_plots <- temp_plot +rain_plot + carbon_price_plot + wheat_plot + dairy_plot + timber_plot +
+  plot_layout(guides = 'collect', nrow = 3)
+
+layout <- "
+ABGHI
+ABGHI
+CDGHI
+CDJJJ
+EFJJJ
+EFJJJ
+"
+
+bump_plot_horizontal <- temp_plot + rain_plot + carbon_price_plot + wheat_plot + dairy_plot + timber_plot + plot_list_maps_labelled$`P-NH` + plot_list_maps_labelled$`P-ME` + plot_list_maps_labelled$`P-HE` + bump_plot +
+  plot_layout(guides = 'collect', design = layout) & plot_annotation(tag_levels = 'a') & 
+  theme(legend.position = 'bottom', plot.tag = element_text(face = "bold"))
+ggsave('output/figures/fig1_bump_chart_horizontal.png', bump_plot_horizontal, width = 3000, height = 2000, 
+       units = 'px', scale = 1)
 
 ## Extract carbon sequestration numbers ------
 in_scenario_ghg_table <- read_csv(paste0('output/tables/in_scenario_ghg_table.csv'))

@@ -26,9 +26,21 @@ if (!exists('gridnet')) {
 }
 
 ## Functions ----------
+fcn_plot_planting <- function(df_optim) {
+  df <- right_join(gridnet, df_optim, by = 'new2kid') %>%
+    filter(hectares_planted > 0) %>%
+    mutate(species = factor(species, c('POK', 'SS'), c('Broadleaf', 'Conifer')))
+  plot <- ggplot() +
+    geom_sf(data = gb_border, color = "gray20", fill = "#f7fcb94D", lwd = 0.2, inherit.aes = FALSE) +
+    geom_sf(data = df, aes(fill = species, alpha = hectares_planted+1), lwd = 0, color = NA) +
+    scale_fill_manual(values = c("#D55E00", "#009E73")) +
+    scale_alpha_continuous(guide = "none", range = c(0,1), trans = "log")+
+    labs(fill = 'Species')+
+    theme_void()
+  plot
+}
 
 fcn_plot_planting_mix <- function(df_list, facet_dir = 'row') {
-
   df_optim <- df_list %>%
     bind_rows(.id = "column_label") %>%
     mutate(column_label = factor(column_label, levels = names(df_list)))

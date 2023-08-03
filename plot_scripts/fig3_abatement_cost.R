@@ -260,7 +260,7 @@ abatement_plot_horizontal <- cdr_plot + cdr_plot + cdr_plot + abatement_hectares
   plot_layout(guides = 'collect', design = layout, heights = c(.5,3))&
   theme(legend.position = 'bottom') &
   plot_annotation(tag_levels = 'a') & 
-  theme(plot.tag = element_text(size = 12))
+  theme(plot.tag = element_text(size = 12, face = 'bold'))
 abatement_plot_horizontal
 ggsave('output/figures/fig3_abatement_cost_plot.png', abatement_plot_vertical, width = 1200, height = 2000, units = 'px')
 ggsave('output/figures/fig3_abatement_cost_plot_horizontal.png', abatement_plot_horizontal, width = 2500, height = 1300, units = 'px', scale = 1.2)
@@ -283,7 +283,6 @@ annotated_plot <- (abatement_hectares_annotated_plot+remove_x_axis_title()) |
   abatement_ghg_annotated_plot |
   (abatement_cost_annotated_plot+remove_x_axis_title()) |
   annotation_layer +
-  plot_layout(guides = 'collect') & theme(legend.position = 'bottom')&
   plot_annotation(tag_levels = 'a') & 
-  theme(plot.tag = element_text(size = 12))
+  theme(plot.tag = element_text(size = 12, face = 'bold'))
 ggsave('output/figures/fig3_abatement_cost_plot_annotated.png', annotated_plot, width = 2500, height = 1000, units = 'px', scale = 1.2)
