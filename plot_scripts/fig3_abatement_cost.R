@@ -31,7 +31,7 @@ cdr_gbp$ub <- cdr$ub * exch_rate * gdp_deflator
 
 cdr_gbp$name <- rownames(cdr_gbp)
 
-ra_labels <- c('Maximise EV', 'Moderate RA', 'Minimise Risk')
+ra_labels <- c('Risk-neutral', 'Moderate RA', 'Risk-averse')
 
 cdr_tech_intervals <- cdr_gbp["daccs",c('lb','ub')]
 cdr_intervals <- function() {
@@ -120,32 +120,35 @@ hectares_table <- hectares %>%
   pivot_longer(ra_labels) %>%
   filter(name != ra_labels[2])
 
-fcn_add_cdr_intervals <- function(yaxis_max) {
-  return(
-    list(
+fcn_add_cdr_intervals <- function(plt) {
+  gg <- unserialize(serialize(plt, NULL))
+  gg$coordinates$limits$y[1] <- gg$coordinates$limits$y[1] - (gg$coordinates$limits$y[2] - gg$coordinates$limits$y[1])*.4
+  lims <- gg$coordinates$limits
+  y_lb <- gg$coordinates$limits$y[1]
+  y_range <- gg$coordinates$limits$y[2] - gg$coordinates$limits$y[1]
+  gg +
       annotate("segment", x = cdr_gbp[c('beccs', 'daccs'), 'lb'], xend = cdr_gbp[c('beccs', 'daccs'), 'ub'], 
-               y = c(yaxis_max*0.8, yaxis_max*0.9), yend = c(yaxis_max*0.8, yaxis_max*0.9), size = 1),
-      annotate("text", label = c('BECCS', 'DACCS'), x = rowMeans(cdr_gbp[c('beccs', 'daccs'), c('lb','ub')]), y = c(yaxis_max*0.8, yaxis_max*0.9)+yaxis_max*0.02, size = 4, vjust = 0)
-    )
-  )
+               y = c(y_lb + y_range*0.15, y_lb + y_range*0.05), yend = c(y_lb + y_range*0.15, y_lb + y_range*0.05), size = 1) +
+      annotate("text", label = c('BECCS', 'DACCS'), x = rowMeans(cdr_gbp[c('beccs', 'daccs'), c('lb','ub')]), 
+               y = c(y_lb + y_range*0.15, y_lb + y_range*0.05)+y_range*0.02, size = 4, vjust = 0)
 }
 
 abatement_hectares_plot <- hectares_table %>%
+  mutate(name = factor(name, levels = c("Risk-neutral", "Risk-averse")))%>%
   ggplot(aes(y = value, x = as.numeric(abatement_cost), color = name)) +
   cdr_intervals() +
   geom_line(size =1) +
   scale_x_continuous('Non-forest CDR Cost (£/tCO2e/yr)') +
-  scale_y_continuous('Tree planting (ha)', labels = scales::unit_format(suffix='M', scale = 1e-6)) +
+  scale_y_continuous('Tree planting (ha)', labels = scales::unit_format(suffix='M', scale = 1e-6), breaks = c(0, 0.5e6, 1e6, 1.5e6)) +
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
   ggpubr::theme_pubr() +
-  coord_cartesian( ylim = c(0, 2.3e6), xlim = c(0,260), expand = F) +
+  coord_cartesian( ylim = c(0, 1.7e6), xlim = c(0,260), expand = F) +
   labs(color = '')+
-  theme(legend.position = 'none')
+  guides(color = 'none')
 abatement_hectares_plot
 
-abatement_hectares_annotated_plot <- abatement_hectares_plot +
-  fcn_add_cdr_intervals(2.3e6)
+abatement_hectares_annotated_plot <-  fcn_add_cdr_intervals(abatement_hectares_plot)
 abatement_hectares_annotated_plot
 
 ghg <- 1:length(cst) %>%
@@ -190,8 +193,9 @@ ghg_table <- ghg %>%
   mutate(strategy = factor(strategy, c('ev', 'cvar50', 'cvar100'), ra_labels)) %>%
   mutate(mean = mean / (12*1e6), lb = lb / (12*1e6), ub = ub / (12*1e6))
 
-yaxis_max <- 1.5
+yaxis_max <- 1.3
 abatement_ghg_plot <- ghg_table %>%
+  mutate(strategy = factor(strategy, levels = c("Risk-neutral", "Risk-averse")))%>%
   ggplot(aes(x = abatement_cost, y = mean, fill = strategy, color = strategy)) +
   geom_hline(yintercept = 1, color = 'gray30') +
   cdr_intervals() +
@@ -200,19 +204,15 @@ abatement_ghg_plot <- ghg_table %>%
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
   #scale_y_continuous('MtCO2e/yr', labels = scales::unit_format(suffix = '', scale = 1e-6))+
-  scale_y_continuous('Forestry contribution to CDR target', labels = scales::percent_format())+
+  scale_y_continuous('Forestry contribution to CDR target', labels = scales::percent_format(), breaks = c(0,0.5,1))+
   scale_x_continuous('Non-forest CDR Cost \n(£/tCO2e/yr)') +
   ggpubr::theme_pubr()+
-  labs(color = '', fill = '') +
-  theme(legend.position = 'none')+
+  labs(color = 'Optimal decision', fill = 'Optimal decision') +
   theme(legend.position = 'bottom')+
-  coord_cartesian(ylim = c(0, yaxis_max), xlim = c(0, 260), expand = F) +
-  guides(fill = 'none')
+  coord_cartesian(ylim = c(0, yaxis_max), xlim = c(0, 260), expand = F)
 abatement_ghg_plot
 
-abatement_ghg_annotated_plot <- abatement_ghg_plot +
-  fcn_add_cdr_intervals(1.5) +
-  guides(color = 'none', fill = 'none')
+abatement_ghg_annotated_plot <- fcn_add_cdr_intervals(abatement_ghg_plot)
 abatement_ghg_annotated_plot
 
 cost_table <- ghg %>%
@@ -225,24 +225,23 @@ cost_table <- ghg %>%
   mutate(abatement_cost = as.numeric(abatement_cost)) %>%
   mutate(strategy = factor(strategy, c('ev', 'cvar50', 'cvar100'), ra_labels))
 abatement_cost_plot <- cost_table %>%
+  mutate(strategy = factor(strategy, levels = c("Risk-neutral", "Risk-averse")))%>%
   ggplot(aes(x = abatement_cost, y = -mean, fill = strategy, color = strategy)) +
   cdr_intervals() +
   geom_ribbon(aes(ymin = -lb, ymax = -ub), alpha = 0.3) +
   geom_line(aes(y = -mean), size = 1) +
   ggsci::scale_color_nejm()+
   ggsci::scale_fill_nejm()+
-  scale_y_continuous('Total Cost (£)', labels = scales::unit_format(suffix = 'B', scale = 1))+
+  scale_y_continuous('Total Cost (£)', labels = scales::unit_format(suffix = 'B', scale = 1), breaks = c(0, 10, 20, 30))+
   scale_x_continuous('Non-forest CDR Cost (£/tCO2e/yr)') +
-  coord_cartesian(expand = F, ylim = c(0,40), xlim = c(0, 260)) +
+  coord_cartesian(expand = F, ylim = c(0,35), xlim = c(0, 260)) +
   ggpubr::theme_pubr()+
   labs(color = '', fill = '') +
   theme(legend.position = 'bottom')+
-  guides(fill = 'none')
+  guides(fill = 'none', color = 'none')
 abatement_cost_plot
 
-abatement_cost_annotated_plot <- abatement_cost_plot  +
-  fcn_add_cdr_intervals(40)+
-  guides(color = 'none', fill = 'none')
+abatement_cost_annotated_plot <- fcn_add_cdr_intervals(abatement_cost_plot)
 
 
 
@@ -264,6 +263,7 @@ abatement_plot_horizontal <- cdr_plot + cdr_plot + cdr_plot + abatement_hectares
 abatement_plot_horizontal
 ggsave('output/figures/fig3_abatement_cost_plot.png', abatement_plot_vertical, width = 1200, height = 2000, units = 'px')
 ggsave('output/figures/fig3_abatement_cost_plot_horizontal.png', abatement_plot_horizontal, width = 2500, height = 1300, units = 'px', scale = 1.2)
+ggsave('output/figures/fig3_abatement_cost_plot_horizontal.pdf', abatement_plot_horizontal, width = 2500, height = 1300, units = 'px', scale = 1.2)
 
 ## Modify based on comments
 annotation_layer <- ggplot() +
@@ -273,16 +273,19 @@ annotation_layer <- ggplot() +
   annotate("segment", y = 1, yend = 7.5, x = 0.5, xend = 0.5) +
   annotate("segment", y = 1, yend = 1, x = 0.5, xend = 0.2) +
   annotate("segment", y = 7.5, yend = 7.5, x = 0.5, xend = 0.2) +
-  annotate("text", label = 'Risky \nalternative CDR', hjust = 0, y = 9, x = .8) +
-  annotate("text", label = 'Forest CDR vs. \nhypothetical \nnon-forest CDR', hjust = 0, y = 4.5, x = .8) +
-  coord_cartesian(xlim = c(0.2,3), ylim = c(0.9,10.1), expand = F) +
+  annotate("text", label = 'Risky \nnon-forest CDR', hjust = 0, y = 9, x = .8) +
+  annotate("text", label = 'Forest CDR vs. \nhypothetical\nriskless\nnon-forest CDR', hjust = 0, y = 4.5, x = .8) +
+  coord_cartesian(xlim = c(0.2,3), ylim = c(10.1,0.9), expand = F) +
   theme_void()
 annotation_layer
 
-annotated_plot <- (abatement_hectares_annotated_plot+remove_x_axis_title()) |
-  abatement_ghg_annotated_plot |
-  (abatement_cost_annotated_plot+remove_x_axis_title()) |
+annotated_plot <- (abatement_hectares_annotated_plot+remove_x_axis_title()) +
+  abatement_ghg_annotated_plot +
+  (abatement_cost_annotated_plot+remove_x_axis_title()) +
   annotation_layer +
-  plot_annotation(tag_levels = 'a') & 
-  theme(plot.tag = element_text(size = 12, face = 'bold'))
-ggsave('output/figures/fig3_abatement_cost_plot_annotated.png', annotated_plot, width = 2500, height = 1000, units = 'px', scale = 1.2)
+  plot_layout(nrow = 1, guides = 'collect') &
+  plot_annotation(tag_levels = list(c('a','b','c',''))) & 
+  theme(legend.position = 'bottom', plot.tag = element_text(size = 12, face = 'bold'))
+ggsave('output/figures/fig3_abatement_cost_plot_annotated.png', annotated_plot, width = 2500, height = 1100, units = 'px', scale = 1.2)
+ggsave('output/figures/fig3_abatement_cost_plot_annotated.pdf', annotated_plot, width = 2500, height = 1100, units = 'px', scale = 1.2)
+

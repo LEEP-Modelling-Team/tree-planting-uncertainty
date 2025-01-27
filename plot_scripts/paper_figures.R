@@ -5,16 +5,16 @@ library(ggsci)
 #showtext_opts(dpi = 300)
 #font_add(family = "Helvetica", regular = "~/.fonts/Helvetica.ttf")
 
-source('../scripts/helpers.R')
-source('../scripts/plot_mix_planting.R')
-source("../scripts/nightingale_plot.R")
+source('plot_scripts/helpers.R')
+source('plot_scripts/plot_mix_planting.R')
+source("plot_scripts/nightingale_plot.R")
 
 # Representative scenarios
 facet_width <- (210-2.54)/5
 facet_height <- (273-2.54)
 
-source("../scripts/fcn_get_rs.R")
-source("../scripts/plot_rep_scen_grid.R")
+source("plot_scripts/fcn_get_rs.R")
+source("plot_scripts/plot_rep_scen_grid.R")
 df_list <- fcn_get_rs(within_sample = T)
 CER <- c(457, 2544, 3083)
 rs_list <- lapply(CER, function(x) read_csv(paste0('../../output/',date_string,'_decision_table/oc_decision_table_rs_',x,'.csv'))) %>%
@@ -67,7 +67,7 @@ ggsave(plot_temp,filename = paste0('../output/', date_string, '/rs_climate_temp.
 ggsave(plot_rain,filename = paste0('../output/', date_string, '/rs_climate_rain.png'), width = facet_width, height = facet_height*0.75,
        units = 'mm', scale = 1, dpi=300)
 
-source("../scripts/plot_mix_share.R")
+source("plot_scripts/plot_mix_share.R")
 
 rs_mix_share_simple <- fcn_plot_mix_share(facetting = T,smooth = F, rcp_point_coloring = F, labels = F)
 ggsave(rs_mix_share_simple, filename = paste0('../output/', date_string, '/rs_mix_share_simple.png'), width = facet_width*5, height = facet_height*0.3, units = 'mm', scale = 1)
@@ -76,7 +76,7 @@ rs_mix_share <- fcn_plot_mix_share()
 ggsave(rs_mix_share, filename = paste0('../output/', date_string, '/rs_mix_share.png'), width = facet_width*5, height = facet_height*0.3, units = 'mm', scale = 1)
 
 #Returns tail
-source("../scripts/plot_returns_tail.R")
+source("plot_scripts/plot_returns_tail.R")
 upside_vec <- c(F, T, F, T)
 downside_vec <- c(F, F, T, T)
 name_vec <- c("no_color", "upside", "downside", "all")
@@ -89,7 +89,7 @@ for (i in 1:length(upside_vec)) {
 }
 
 #Efficiency frontiers ------
-source('../scripts/plot_efficiency_frontier.R')
+source('plot_scripts/plot_efficiency_frontier.R')
 ef_plot <- fcn_plot_efficiency_frontier()
 ef_plot
 ggsave(ef_plot, filename = paste0('../output/', date_string, '/efficiency_frontier.png'), width = facet_width*3, height = facet_height*0.4, units = 'mm', scale = 1.2)

@@ -68,6 +68,8 @@ ev_returns <- returns_table$EV %>%
 ra_returns <- returns_table$CVaR %>%
   fcn_normalise_benefits()
 
+at_risk_threshold <- -10
+
 run_index <- returns_table$run_index %>% substr(0,5) %>% as.numeric()
 which(run_index %in% CER, arr.ind = T)
 rs_returns_point <- data.frame(CER = c('NH', 'ME', 'HE'), P.EV = ev_returns[CER], P.RA = ra_returns[CER])
@@ -75,7 +77,7 @@ jitter_df <- data.frame(EV = ev_returns, RA = ra_returns,
                         clim_scen_string = returns_table$clim_scen_string) %>%
   pivot_longer(c('EV', 'RA'), names_to = 'model', values_to = 'benefits') %>%
   mutate(model = factor(model, c('EV', 'RA'), c('P-EV', 'P-RA'))) %>%
-  mutate(at_risk = benefits < quantile(ev_returns, 0.1))
+  mutate(at_risk = benefits < -10)
 mean_group <- jitter_df %>%
   filter(at_risk) %>%
   group_by(model) %>%
@@ -94,7 +96,7 @@ jitter_sigmoid <- jitter_df %>%
   slice_sample(n=400) %>%
   ggplot(aes(y = fct_rev(model), x = benefits)) +
   ggnewscale::new_scale_color()+
-  geom_vline(aes(xintercept = quantile(ev_returns, 0.1)), color = 'gray70', size = .5) +
+  geom_vline(aes(xintercept = at_risk_threshold), color = 'gray70', size = .5) +
   geom_jitter(aes(color = at_risk), height = 0.25, size = .5)+
   scale_color_manual(values = c('gray50','#DC3220'), guide = 'none') +
   ggnewscale::new_scale_color()+
@@ -103,7 +105,7 @@ jitter_sigmoid <- jitter_df %>%
   geom_bump(data = rs_returns_point_long, aes(group = CER), color = 'white', direction = 'y', size = 2) +
   geom_bump(data = rs_returns_point_long, aes(color = CER, group = CER), direction = 'y', size = 1) +
   geom_point(data = rs_returns_point_long, aes(color = CER), size = 3) +
-  geom_text(data = rs_returns_point_long %>% group_by(CER) %>% summarise(benefits = mean(benefits)), 
+  geom_label(data = rs_returns_point_long %>% group_by(CER) %>% summarise(benefits = mean(benefits)), 
             aes(label = CER, color = CER, x = benefits, y = 1.5), hjust = 1, nudge_x = -2) +
   scale_color_manual("CER", values = cer_colors) +
   guides(color = 'none', fill = 'none')+
@@ -145,7 +147,7 @@ dist_p_ev <- jitter_df %>%
   theme(axis.line.x = element_line())
 
 ev_benefits <- filter(jitter_df, model == 'P-EV')$benefits
-fcn_plot_shaded_density <- function(dist, risk_thres = quantile(ev_returns, 0.1), vlines = c(), cols = c(), title = "") {
+fcn_plot_shaded_density <- function(dist, risk_thres = at_risk_threshold, vlines = c(), cols = c(), title = "") {
   dens <- density(dist)
   data <- tibble(x = dens$x, y = dens$y) %>% 
     mutate(at_risk = x < risk_thres) 
@@ -157,7 +159,7 @@ fcn_plot_shaded_density <- function(dist, risk_thres = quantile(ev_returns, 0.1)
     geom_area(fill = 'gray50') +
     geom_area(data = filter(data, at_risk), fill = '#f22a18') + 
     geom_segment(data = vline_df, aes(x = vlines, xend = vlines, y = 0, yend = as.numeric(dens), color = I(cols)), size = 0.5) +
-    geom_line(color = 'white', linewidth = 1.5) +
+    geom_line(color = 'white', linewidth = 0.5) +
     geom_text(aes(x = min(distribution_lims), y = max(dens$y), label = title), hjust = 0, vjust = 1) +
     theme_void() +
     coord_cartesian(xlim = distribution_lims, ylim = c(0, max(dens$y+1e-3)), expand = F)+
@@ -199,8 +201,10 @@ selected_maps <- selected_solutions %>%
   lapply(fcn_plot_planting)
 selected_maps_labelled <- seq_along(selected_maps) %>%
   lapply(function(i){
-    selected_maps[[i]] +
-      annotate("text",  x=Inf, y = Inf, label = names(selected_maps)[i], vjust=0.99, hjust=0.99)
+    plt <- selected_maps[[i]] +
+      annotate("text",  x=Inf, y = Inf, label = names(selected_maps)[i], vjust=0.99, hjust=0.99) +
+      theme(legend.position = 'none', legend.direction = 'vertical', plot.margin = unit(c(0,0,0,0), 'cm'))
+    wrap_elements(full = plt, clip = F)
   })
 names(selected_maps_labelled) <- names(selected_maps)
 
@@ -265,12 +269,14 @@ fcn_npv_scatter <- function(df) {
           strip.background = element_blank(),
           axis.title = element_blank())
   
+  best_fit_lm <- lm(B ~ C, data = df)
+  
   scatter <- df %>%
     ggplot(aes(x = C, y = B)) +
     geom_vline(xintercept = 0, color = 'gray80') +
     geom_hline(yintercept = 0, color = 'gray80') +
     geom_point(alpha = 0.3, color = 'gray50', shape = 20) +
-    geom_smooth(method = 'lm', se= F, color = "#D55E00") +
+    geom_abline(slope = best_fit_lm$coefficients[['C']], intercept = best_fit_lm$coefficients[['(Intercept)']], color = "#D55E00") +
     theme_pubr() +
     coord_fixed(ylim = c(-2e10, 3e10), xlim = c(-2e10, 3e10)) +
     scale_x_continuous("NPV: all conifers (£)", labels = scales::unit_format(suffix = 'B', scale = 1e-9), n.breaks = 3) +
@@ -283,20 +289,22 @@ npv_scatter_cvar <- fcn_npv_scatter(cvar_cov_sums)
 npv_scatter_ev <- fcn_npv_scatter(ev_cov_sums)
 
 layout_design <- "
-A##
-BEG
-CEG
-CFH
-DFH
-#I#"
+A##I
+BEGG
+CEGG
+CFHH
+DFHH"
 
 jitter_distribution_plot <- cer_benefits_dist_boxwhisk_plot + dist_p_ev + 
   jitter_sigmoid + dist_p_ra + selected_maps_labelled$`P-EV` + selected_maps_labelled$`P-RA` + 
-  npv_scatter_ev + npv_scatter_cvar + guide_area() +
-  plot_layout(design = layout_design, heights = c(1,1,1,1,1,0.1), widths = c(2.5,1.1,1.8), guides = 'collect') +
-  plot_annotation(tag_levels = 'a') & 
+  npv_scatter_ev + npv_scatter_cvar + wrap_elements(cowplot::get_legend(selected_maps$`P-EV`)) +
+  plot_layout(design = layout_design, heights = c(1,1,1,1,1), widths = c(2.5,1.5,1.3,0.6), guides = 'collect') +
+  plot_annotation(tag_levels = list(c('a','b','c','d','e','f','g','h','i','j'))) & 
   theme(legend.position = 'bottom', plot.tag = element_text(face = 'bold'))
 ggsave('output/figures/fig2_jitter_distribution.png', jitter_distribution_plot, width = 3500, height = 2000, units = 'px')
+ggsave('output/figures/fig2_jitter_distribution.pdf', jitter_distribution_plot, width = 3500, height = 2000, units = 'px')
+
+
 dev.off()
 
 ## Calculate per hectare benefits and costs for back-of-the-envelope calculations ------

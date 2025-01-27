@@ -19,19 +19,31 @@ source("plot_scripts/define_cer.R")
 param_table <- read_csv("data/param_table.csv") %>%
   mutate(run_index = substr(run_index, 1, 5) %>% as.numeric())
 
+fields <- c('price_wheat', 'price_osr', 'price_wbar', 'price_pot', 'price_sb', 'price_dairy',
+            'price_beef', 'price_sheep', 'price_fert', 'price_timber')
+field_names <- c('Wheat (£/t)', 'Oilseed Rape (£/t)', 'Barley (£/t)', 'Potatoes (£/t)', 'Sugarbeet (£/t)',
+                 'Milk (£/ppl)', 'Beef (p/kg deadweight)', 'Sheep (p/kg deadweight)',
+                 'Fertiliser (£/t)', 'Timber (£/m3)')
+
+price_assumptions <- lapply(fields, function(f) {
+  df <- read_csv(glue::glue("data/price_assumptions/{f}_assumption.csv"), col_names = F)
+  colnames(df) <- 2020:2049
+  if (f=='price_timber') {
+    # Standardise timber prices
+    df <- df * 22
+  }
+  return(df)
+})
+names(price_assumptions) <- fields
+
 carbon_price_assumption <- read_csv("data/price_assumptions/carbon_price_assumption.csv", col_names = F)
-price_wheat_assumption <- read_csv("data/price_assumptions/price_wheat_assumption.csv", col_names = F)
-price_dairy_assumption <- read_csv("data/price_assumptions/price_dairy_assumption.csv", col_names = F)
-price_timber_assumption <- read_csv("data/price_assumptions/price_timber_assumption.csv", col_names = F)
-colnames(carbon_price_assumption) <- colnames(price_wheat_assumption) <- colnames(price_dairy_assumption) <- colnames(price_timber_assumption) <- 2020:2049
+colnames(carbon_price_assumption) <- 2020:(2020+ncol(carbon_price_assumption))
 
 # List economic variables
-economic_var <- list(carbon_price = carbon_price_assumption,
-                     price_wheat = price_wheat_assumption,
-                     price_dairy = price_dairy_assumption,
-                     price_timber = price_timber_assumption*22) %>%
+economic_var <- price_assumptions %>%
   lapply(function(x) cbind(param_table,x)) %>%
   bind_rows(.id = "var")
+carbon_price_var <- cbind(param_table, carbon_price_assumption)
 
 # Climate variables
 climate_data <- read_csv("data/climate_delta_ts.csv") %>%
@@ -41,12 +53,12 @@ climate_var <- param_table %>%
   right_join(climate_data, by = c("clim_scen_string", "climate_model_member"), relationship = "many-to-many") 
 climate_var_long <- pivot_longer(climate_var, as.character(2020:2080), names_to = 'year', values_to = 'value') %>%
   mutate(year = as.numeric(year))
-
+carbon_price_long <- pivot_longer(carbon_price_var, colnames(carbon_price_assumption), names_to = 'year', values_to = 'value') %>%
+  mutate(year = as.numeric(year), var = "carbon_price")
 
 # Join climate and economic variables
-var_names =  c('temp', 'rain', 'carbon_price', 'price_wheat', 'price_dairy', 'price_timber')
-var_labels = c("Temperature (°C)", "Rainfall (mm)", 'Carbon Price (£/tCO2e)', 
-               'Wheat (£/t)', 'Dairy (£/ppl)', 'Timber (£/m3)')
+var_names =  c('temp', 'rain', 'carbon_price', fields)
+var_labels = c("Temperature (°C)", "Rainfall (mm)", 'Carbon Price (£/tCO2e)', field_names)
 climate_var_subset <- climate_var %>%
   select(-as.character(2050:2080))
 econ_df <- economic_var %>%
@@ -62,31 +74,51 @@ fcn_plot_var <- function(df) {
   clim_econ_range <- df %>%
     group_by(var, year) %>%
     summarise(min = min(value), max = max(value), lb = quantile(value, 0.05), ub = quantile(value, 0.95))
+  if (max(df$year) == 2080) {
+    lab_gap = 20
+  } else {
+    lab_gap = 10
+  }
   clim_econ_var <- clim_econ_range %>%
     ggplot() +
     geom_ribbon(aes(x = year, ymin = lb, ymax = ub), fill = "gray80") +
     geom_line(data = clim_econ_var_cer, aes(x = year, y = value, color = cer)) +
     scale_color_manual("CER", values = cer_colors) +
-    scale_x_continuous("Year", expand = c(0,0), n.breaks = 3) +
+    scale_x_continuous("Year", expand = c(0,0), breaks = seq(2020, max(df$year)-1, by = lab_gap)) +
     scale_y_continuous(expand = c(0.1,0.1)) +
+    coord_cartesian(xlim = c(2020, max(df$year))) +
     theme_pubr() +
     theme(strip.background = element_blank(),
+          axis.line = element_blank(),
+          panel.border = element_rect(fill = NA, colour = 'black', linewidth = .5),
           legend.position = 'right')
   clim_econ_var
 }
 
 temp_plot <- fcn_plot_var(filter(climate_var_long, var == 'temp')) +
-  scale_y_continuous('Temperature (°C)')
+  scale_y_continuous('') +
+  ggtitle('Temperature (°C)')
 rain_plot <- fcn_plot_var(filter(climate_var_long, var == 'rain')) +
-  scale_y_continuous('Rainfall (mm)')
-carbon_price_plot <- fcn_plot_var(filter(econ_df, var == 'Carbon Price (£/tCO2e)')) +
-  scale_y_continuous('Carbon Price (£/tCO2e)')
-wheat_plot <- fcn_plot_var(filter(econ_df, var == 'Wheat (£/t)')) +
-  scale_y_continuous('Wheat (£/t)')
-dairy_plot <- fcn_plot_var(filter(econ_df, var == 'Dairy (£/ppl)')) +
-  scale_y_continuous('Dairy (£/ppl)')
-timber_plot <- fcn_plot_var(filter(econ_df, var == 'Timber (£/m3)')) +
-  scale_y_continuous('Timber (£/m3)')
+  scale_y_continuous('') +
+  ggtitle('Rainfall (mm)')
+carbon_price_plot <- fcn_plot_var(carbon_price_long) +
+  ggtitle('Carbon Price (£/tCO2e)') +
+  scale_y_continuous('') +
+  coord_cartesian(xlim = c(2020,2055), ylim = c(0, 600))
+
+ag_plots <- lapply(field_names, \(x) {
+  fcn_plot_var(filter(econ_df, var == x)) +
+    scale_y_continuous("") +
+    ggtitle(x)
+})
+
+all_plots <- list(temp_plot, rain_plot, carbon_price_plot)
+all_plots <- append(all_plots, ag_plots)
+
+cer_shaded_plots <- wrap_plots(all_plots) + plot_layout(guides = 'collect', ncol = 5) +
+  plot_annotation(title = "Trends of key climate and economic variables across CERs")
+ggsave('output/figures/sdfig3_cer_trends.png', cer_shaded_plots, scale = 1.5, width = 30, height = 20, units = 'cm')
+ggsave('output/figures/sdfig3_cer_trends.pdf', cer_shaded_plots, scale = 1.5, width = 30, height = 20, units = 'cm')
 
 ## 2. Plot bump charts ---------
 returns_table <- read_csv(paste0('output/tables/oc_returns_table_mix.csv'))
@@ -145,11 +177,12 @@ bump_plot <- bump_data %>%
   scale_color_manual("Planting \nstrategy", values = p_cer_colors) +
   ggpubr::theme_pubr() +
   scale_size_continuous(range = c(2,5), guide = 'none')+
-  scale_y_continuous('NPV (billion £)', expand = c(0.1,0.1))+
-  scale_x_continuous(limits = c(0.5, 3.5), expand = c(0,0)) +
+  scale_y_continuous('NPV (billion £)', expand = c(0,0.1), limits = c(-32, 42))+
+  scale_x_continuous('', limits = c(0.5, 3.5), expand = c(0,0)) +
+  annotate('text', x = 2, y = -30, label = 'Climate-economy\nRealisation (CER)', angle = 90) +
   coord_flip() +
   theme(axis.text.y = element_blank(),
-        axis.title.y = element_blank(),
+        axis.title.y = element_text(size = 10),
         axis.line.y = element_blank(),
         axis.ticks.y = element_blank())
 bump_plot
@@ -167,9 +200,16 @@ plot_list_maps <- decision_table_cer %>%
   rev()
 plot_list_maps_labelled <- seq_along(plot_list_maps) %>%
   lapply(function(i){
-    plot_list_maps[[i]] + ggtitle(names(plot_list_maps)[i]) +
-    theme(plot.title = element_text(color = p_cer_colors[i], face = 'bold', hjust = 0.5),
-          panel.background = element_rect(colour = p_cer_colors[i], linewidth=1, fill=NA))
+    plt <- plot_list_maps[[i]] + 
+      ggtitle(names(plot_list_maps)[i]) +
+      theme(plot.title = element_text(color = p_cer_colors[i], face = 'bold', hjust = 0.5),
+          plot.background = element_rect(colour = p_cer_colors[i], linewidth=1, fill=NA),
+          legend.direction = 'vertical') + theme(legend.position = 'none')
+    bar_plot <- fcn_bar_plot(decision_table_cer[[length(decision_table_cer)+1-i]]) + 
+      theme(legend.position = 'none', plot.margin = unit(c(.1,0,0,0), "cm")) + 
+      ylab("Area ") + theme(axis.title.y =  element_text())
+    whole_plt <- plt / free(bar_plot) + plot_layout(heights = c(0.9, 0.1))
+    return(wrap_elements(whole_plt))
   })
 names(plot_list_maps_labelled) <- names(plot_list_maps)
 
@@ -188,22 +228,21 @@ CCCC
 #ggsave('output/figures/fig1_bump_chart.png', bump_plot_var_map, width = 2000, height = 3000, 
 #       units = 'px', scale = 1.2)
 
-clim_econ_var_plots <- temp_plot +rain_plot + carbon_price_plot + wheat_plot + dairy_plot + timber_plot +
+clim_econ_var_plots <- temp_plot +rain_plot + carbon_price_plot + 
   plot_layout(guides = 'collect', nrow = 3)
 
-layout <- "
-ABGHI
-ABGHI
-CDGHI
-CDJJJ
-EFJJJ
-EFJJJ
-"
+legends <- wrap_elements(cowplot::plot_grid(cowplot::get_plot_component(plot_list_maps[[1]]+theme(legend.direction = 'horizontal'), 'guide-box', return_all=TRUE)[[1]],
+                                            cowplot::get_plot_component(bump_plot, 'guide-box', return_all=TRUE)[[4]]))
 
-bump_plot_horizontal <- temp_plot + rain_plot + carbon_price_plot + wheat_plot + dairy_plot + timber_plot + plot_list_maps_labelled$`P-NH` + plot_list_maps_labelled$`P-ME` + plot_list_maps_labelled$`P-HE` + bump_plot +
-  plot_layout(guides = 'collect', design = layout) & plot_annotation(tag_levels = 'a') & 
-  theme(legend.position = 'bottom', plot.tag = element_text(face = "bold"))
-ggsave('output/figures/fig1_bump_chart_horizontal.png', bump_plot_horizontal, width = 3000, height = 2000, 
+bump_plot_horizontal <- (plot_list_maps_labelled$`P-NH` | plot_list_maps_labelled$`P-ME` | plot_list_maps_labelled$`P-HE`) / 
+  bump_plot / legends +
+  plot_layout(guides = 'collect', heights = c(.55, .4, .05)) & plot_annotation(tag_levels = list(c('a','b','c','d'))) &
+  theme(legend.position = 'none', legend.direction = 'horizontal', 
+        plot.tag = element_text(face = "bold"), 
+        legend.justification = "left")
+ggsave('output/figures/fig1_bump_chart_horizontal.png', bump_plot_horizontal, width = 2000, height = 2200, 
+       units = 'px', scale = 1)
+ggsave('output/figures/fig1_bump_chart_horizontal.pdf', bump_plot_horizontal, width = 2000, height = 2200, 
        units = 'px', scale = 1)
 
 ## Extract carbon sequestration numbers ------
