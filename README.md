@@ -1,5 +1,7 @@
-# Tree planting decision-making under uncertainty in GB
+# Tree planting decision-making under uncertainty in Great Britain
 Replication code for paper on tree planting uncertainty, supporting the findings published in "Resilient tree-planting under compounding climate and economic uncertainty", by Frankie Cho, Paolo Aglonucci, Ian Bateman, Christopher Lee, Andrew Lovett, Mattia Mancini, Chrysanthi Rapti and Brett Day.
+
+Full data directory uploaded to [Zenodo link]().
 
 ## Replication steps
 
