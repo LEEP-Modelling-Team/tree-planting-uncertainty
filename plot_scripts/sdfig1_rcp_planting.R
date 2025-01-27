@@ -1,6 +1,7 @@
 ## Supplementary data Figure 1: Planting maps for maximising EV and CVaR across the four RCPs
 
 source("./plot_scripts/gridnet_init.R")
+source('./plot_scripts/helpers.R')
 
 rcp_scen <- c(rcp26 = "RCP2.6", "rcp45"= "RCP4.5", "rcp60" = "RCP6.0", "rcp85" = "RCP8.5")
 decision_vars <- c("EV", "CVaR")

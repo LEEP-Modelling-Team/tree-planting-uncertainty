@@ -2,6 +2,7 @@ library(ggplot2)
 library(tidyverse)
 library(ggbump)
 library(patchwork)
+library(ggpubr)
 
 rm(list=ls())
 source("plot_scripts/helpers.R")
@@ -51,7 +52,7 @@ cer_benefits_dist_boxwhisk_plot <- cer_summary %>%
   ggplot(aes(y = name_num, color = name, fill = name)) +
   geom_errorbarh(aes(xmin = min, xmax = max, y = name_num), linewidth = 1, height = .4) +
   geom_rect(aes(xmin = lb, xmax = ub, ymin = name_num-0.4, ymax = name_num+0.4)) +
-  geom_segment(aes(x = mean, xend = mean, y = name_num-0.45, yend = name_num+0.45), size = 0.75, color = 'white') +
+  geom_segment(aes(x = mean, xend = mean, y = name_num-0.45, yend = name_num+0.45), linewidth = 0.75, color = 'white') +
   geom_text(aes(label = name, x = min(distribution_lims), y = name_num), hjust = 0) +
   scale_fill_manual(values = p_cer_colors) +
   scale_color_manual(values = p_cer_colors) +
@@ -96,7 +97,7 @@ jitter_sigmoid <- jitter_df %>%
   slice_sample(n=400) %>%
   ggplot(aes(y = fct_rev(model), x = benefits)) +
   ggnewscale::new_scale_color()+
-  geom_vline(aes(xintercept = at_risk_threshold), color = 'gray70', size = .5) +
+  geom_vline(aes(xintercept = at_risk_threshold), color = 'gray70', linewidth = .5) +
   geom_jitter(aes(color = at_risk), height = 0.25, size = .5)+
   scale_color_manual(values = c('gray50','#DC3220'), guide = 'none') +
   ggnewscale::new_scale_color()+
@@ -158,9 +159,9 @@ fcn_plot_shaded_density <- function(dist, risk_thres = at_risk_threshold, vlines
                    color = 'gray50', linewidth = 1) +
     geom_area(fill = 'gray50') +
     geom_area(data = filter(data, at_risk), fill = '#f22a18') + 
-    geom_segment(data = vline_df, aes(x = vlines, xend = vlines, y = 0, yend = as.numeric(dens), color = I(cols)), size = 0.5) +
+    geom_segment(data = vline_df, aes(x = vlines, xend = vlines, y = 0, yend = as.numeric(dens), color = I(cols)), linewidth = 0.5) +
     geom_line(color = 'white', linewidth = 0.5) +
-    geom_text(aes(x = min(distribution_lims), y = max(dens$y), label = title), hjust = 0, vjust = 1) +
+    annotate('text', label = title, x = min(distribution_lims), y = max(dens$y), hjust = 0, vjust = 1) +
     theme_void() +
     coord_cartesian(xlim = distribution_lims, ylim = c(0, max(dens$y+1e-3)), expand = F)+
     theme(axis.line.x = element_line())
@@ -306,21 +307,3 @@ ggsave('output/figures/fig2_jitter_distribution.pdf', jitter_distribution_plot, 
 
 
 dev.off()
-
-## Calculate per hectare benefits and costs for back-of-the-envelope calculations ------
-ha_other_countries <- 3.3e6
-decision_table_cer <- lapply(CER, function(cer) read_csv(paste0("output/tables/oc_decision_table_rs_", cer, ".csv")))
-names(decision_table_cer) <- cer_names
-cer_hectares <- decision_table_cer %>%
-  lapply(function(x) sum(x$EV * x$hectares)) %>%
-  bind_rows(.id='cer')
-cer_summary$ha <- rev(t(cer_hectares))
-cer_summary %>%
-  mutate(min_perha = min * 1e9 / ha,
-         max_perha = max * 1e9 / ha) %>%
-  mutate(min_other = ha_other_countries * min_perha,
-         max_other = ha_other_countries * max_perha) %>%
-  select(name, min_other, max_other)
-
-min(ra_returns) * ha_other_countries / sum(decision_table$CVaR * decision_table$hectares)
-max(ra_returns) * ha_other_countries / sum(decision_table$CVaR * decision_table$hectares)

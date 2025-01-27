@@ -3,6 +3,7 @@
 library(tools)
 
 source('plot_scripts/gridnet_init.R')
+source('plot_scripts/helpers.R')
 
 crafty_gb <- list.files("data/new2kid_crafty_gb")
 crafty_gb_scen <- crafty_gb %>% 
