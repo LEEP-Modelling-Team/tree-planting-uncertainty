@@ -1,12 +1,12 @@
 # Tree planting decision-making under uncertainty in Great Britain
 Replication code for paper on tree planting uncertainty, supporting the findings published in "Resilient tree-planting under compounding climate and economic uncertainty", by Frankie Cho, Paolo Aglonucci, Ian Bateman, Christopher Lee, Andrew Lovett, Mattia Mancini, Chrysanthi Rapti and Brett Day.
 
-Full data directory uploaded to [Zenodo link]().
+Full data directory uploaded to [Zenodo link](https://dx.doi.org/10.5281/zenodo.14744237).
 
 ## Replication steps
 
 1. Ensure that the data directory contains data downloaded from Zenodo.
-2. Execute `OptimiseDecisions.m` in Matlab to generate decision and returns tables of the planting strategies in `output/tables`. Ensure that all scripts in the directory `optimisation`, including subfolders, were included in the path.
+2. Execute `OptimiseDecisions.m` in Matlab to generate decision and returns tables of the planting strategies in `output/tables`. Ensure that all scripts in the directory `optimisation` and `helpers`, including subfolders, were included in the path.
 3. Open the R project `tree-planting-uncertainty.Rproj` in R (or RStudio) to plot figures. Figures are in `output/figures`
     a. Execute `fig1_bump_chart.R` to get Figure 1 in the main manuscript `fig1_bump_chart_horizontal.png`, the figure of the CERs and planting strategies obtained using scenario analysis and optimisation techniques. This script also generates `sdfig3_cer_trends.png`, which is Fig S2 of the manuscript's supporting information.
     b. Execute `fig2_jitter_distribution.R`, which generates the composite diagram in Figure 2 of the expected value and risk-averse planting strategies, and the correlation between the species' planting returns.
